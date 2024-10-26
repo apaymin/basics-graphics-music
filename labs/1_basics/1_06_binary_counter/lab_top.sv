@@ -74,7 +74,8 @@ module lab_top
     // How do you change the speed of LED blinking?
     // Try different bit slices to display.
 
-    localparam w_cnt = $clog2 (clk_mhz * 1000 * 1000);
+    /* // localparam w_cnt = $clog2 (clk_mhz * 1000 * 1000);
+    localparam w_cnt = $clog2 (clk_mhz * 1000);
 
     logic [w_cnt - 1:0] cnt;
 
@@ -84,7 +85,7 @@ module lab_top
         else
             cnt <= cnt + 1'd1;
 
-    assign led = cnt [$left (cnt) -: w_led];
+    assign led = cnt [$left (cnt) -: w_led]; */
 
     // Exercise 2: Key-controlled counter.
     // Comment out the code above.
@@ -98,9 +99,9 @@ module lab_top
     // 2. Two counters controlled by different keys
     // displayed in different groups of LEDs.
 
-    /*
+    
 
-    wire any_key = | key;
+   /*  wire any_key = | key;
 
     logic any_key_r;
 
@@ -120,8 +121,48 @@ module lab_top
         else if (any_key_pressed)
             cnt <= cnt + 1'd1;
 
-    assign led = w_led' (cnt);
+    assign led = w_led' (cnt); */
 
-    */
+
+    // Task 2.2
+
+    // wire any_key = | key;
+    logic [w_key-1:0] all_keys_r;
+
+    always_ff @ (posedge clk or posedge rst)
+        if (rst)
+            all_keys_r <= '0;
+        else
+            all_keys_r <= key;
+
+    // logic [w_key-1:0] keys_pressed = ~ key & all_keys_r;
+
+    wire add_key_0_pressed = ~ key[0] & all_keys_r[0];
+    wire sub_key_0_pressed = ~ key[1] & all_keys_r[1];
+    wire add_key_1_pressed = ~ key[2] & all_keys_r[2];
+    wire sub_key_1_pressed = ~ key[3] & all_keys_r[3];
+    
+
+    logic [(w_led - 1) >> 1:0] cnt, cnt1;
+
+    always_ff @ (posedge clk or posedge rst)
+        if (rst)
+        begin
+            cnt <= '0;
+            cnt1 <= '0;
+        end
+        else if (add_key_0_pressed)
+            cnt <= cnt + 1'd1;
+        else if (sub_key_0_pressed)
+            cnt <= cnt - 1'd1;
+        else if (add_key_1_pressed)
+            cnt1 <= cnt1 + 1'd1;
+        else if (sub_key_1_pressed)
+            cnt1 <= cnt1 - 1'd1;
+
+    assign led[1:0] = w_led' (cnt);
+    assign led[3:2] = w_led' (cnt1);
+
+   
 
 endmodule

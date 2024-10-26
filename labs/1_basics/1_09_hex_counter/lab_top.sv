@@ -80,13 +80,13 @@ module lab_top
     localparam min_period = clk_mhz * 1000 * 1000 / 30,
                max_period = clk_mhz * 1000 * 1000 *  3;
 
-    always_ff @ (posedge clk or posedge rst)
+/*     always_ff @ (posedge clk or posedge rst)
         if (rst)
             period <= 32' ((min_period + max_period) / 2);
         else if (key [0] & period != max_period)
             period <= period + 32'h1;
         else if (key [1] & period != min_period)
-            period <= period - 32'h1;
+            period <= period - 32'h1; */
 
     logic [31:0] cnt_1;
 
@@ -129,5 +129,29 @@ module lab_top
     //
     // 1. Double the frequency when one key is pressed and released.
     // 2. Halve the frequency when another key is pressed and released.
+
+    logic [w_key-1:0] all_keys_r;
+
+    always_ff @ (posedge clk or posedge rst)
+        if (rst)
+            all_keys_r <= '0;
+        else
+            all_keys_r <= key;
+
+    // logic [w_key-1:0] keys_pressed = ~ key & all_keys_r;
+
+    wire key_0_pressed = ~ key[0] & all_keys_r[0];
+    wire key_1_pressed = ~ key[1] & all_keys_r[1];
+
+    always_ff @ (posedge clk or posedge rst)
+        if (rst)
+            period <= 32' ((min_period + max_period) / 2);
+        else if (key_0_pressed & period != max_period)
+            if ((period << 1) > period)
+                period <= period << 1;  
+            else
+                period = max_period;
+        else if (key_1_pressed & period != min_period)
+            period <= period >> 1; 
 
 endmodule

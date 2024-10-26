@@ -78,7 +78,7 @@ module lab_top
         else
             cnt <= cnt + 1'd1;
 
-    wire enable = (cnt [22:0] == '0);
+    // wire enable = (cnt [22:0] == '0);
 
     //------------------------------------------------------------------------
 
@@ -105,25 +105,28 @@ module lab_top
     //   --d--  h
 
     typedef enum bit [7:0]
-    {
+    {   
+        //         abcd_efgh
         F     = 8'b1000_1110,
         P     = 8'b1100_1110,
         G     = 8'b1011_1100,
         A     = 8'b1110_1110,
+        N     = 8'b1110_1100,
+        T     = 8'b0001_1110,
         space = 8'b0000_0000
     }
     seven_seg_encoding_e;
 
     seven_seg_encoding_e letter;
 
-    always_comb
-      case (4' (shift_reg))
-      4'b1000: letter = F;
-      4'b0100: letter = P;
-      4'b0010: letter = G;
-      4'b0001: letter = A;
-      default: letter = space;
-      endcase
+    // always_comb
+    //   case (4' (shift_reg))
+    //   4'b1000: letter = F;
+    //   4'b0100: letter = P;
+    //   4'b0010: letter = G;
+    //   4'b0001: letter = A;
+    //   default: letter = space;
+    //   endcase
 
     assign abcdefgh = letter;
     assign digit    = shift_reg;
@@ -132,7 +135,18 @@ module lab_top
     // to the level your eyes see the letters as a solid word
     // without any blinking. What is the threshold of such frequency?
 
+    wire enable = (cnt [17:0] == '0);
+
     // Exercise 2: Put your name or another word to the display.
+
+    /* always_comb
+        case (4' (shift_reg))
+        4'b1000: letter = A;
+        4'b0100: letter = N;
+        4'b0010: letter = T;
+        4'b0001: letter = N;
+        default: letter = space;
+        endcase */
 
     // Exercise 3: Comment out the "default" clause from the "case" statement
     // in the "always" block,and re-synthesize the example.

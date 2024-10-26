@@ -60,8 +60,8 @@ module lab_top
     //------------------------------------------------------------------------
 
     // assign led        = '0;
-       assign abcdefgh   = '0;
-       assign digit      = '0;
+    //    assign abcdefgh   = '0;
+    //    assign digit      = '0;
        assign red        = '0;
        assign green      = '0;
        assign blue       = '0;
@@ -82,7 +82,7 @@ module lab_top
 
     //------------------------------------------------------------------------
 
-    wire button_on = | key;
+   /*  wire button_on = | key;
 
     logic [w_led - 1:0] shift_reg;
 
@@ -92,14 +92,67 @@ module lab_top
         else if (enable)
             shift_reg <= { button_on, shift_reg [w_led - 1:1] };
 
-    assign led = shift_reg;
+    assign led = shift_reg; */
 
     // Exercise 1: Make the light move in the opposite direction.
 
+/*     wire button_on = | key;
+
+    logic [w_led - 1:0] shift_reg;
+
+    always_ff @ (posedge clk or posedge rst)
+        if (rst)
+            shift_reg <= '1;
+        else if (enable)
+            shift_reg <= { shift_reg [w_led - 2:0], button_on };
+
+    assign led = shift_reg;
+ */
     // Exercise 2: Make the light moving in a loop.
     // Use another key to reset the moving lights back to no lights.
 
+/*     wire buttons_on = | key[w_key - 1 : 1];
+    wire button_off = key[0];
+
+    logic [w_led - 1:0] shift_reg;
+
+    always_ff @ (posedge clk or posedge rst)
+        if (rst)
+            shift_reg <= 4'b0001;
+        else if (enable)
+            if (buttons_on)
+                shift_reg <= { buttons_on, shift_reg [w_led - 1:1] };
+            else
+                shift_reg <= { shift_reg [0], shift_reg [w_led - 1:1] };
+
+        else if (button_off)
+            shift_reg <= '0;
+
+    assign led = shift_reg; */
+
+
     // Exercise 3: Display the state of the shift register
     // on a seven-segment display, moving the light in a circle.
+
+    wire buttons_on = | key[w_key - 1 : 1];
+    wire button_off = key[0];
+
+    logic [w_key - 1:0] shift_reg;
+
+    always_ff @ (posedge clk or posedge rst)
+        if (rst)
+            shift_reg <= 4'b0001;
+        else if (enable)
+            if (buttons_on)
+                shift_reg <= { buttons_on, shift_reg [w_led - 1:1] };
+            else
+                shift_reg <= { shift_reg [0], shift_reg [w_led - 1:1] };
+
+        else if (button_off)
+            shift_reg <= '0;
+
+    assign abcdefgh = shift_reg;
+    
+    assign digit = 1;
 
 endmodule
