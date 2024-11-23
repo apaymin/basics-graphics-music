@@ -12,6 +12,8 @@
 `define REVERSE_KEY
 `define REVERSE_LED
 
+// `define MIRROR_LCD
+
 //----------------------------------------------------------------------------
 
 module board_specific_top
@@ -211,8 +213,12 @@ module board_specific_top
 
     //------------------------------------------------------------------------
 
+    `ifdef MIRROR_LCD
+
     wire  [w_x - 1:0] mirrored_x = w_x' (screen_width  - 1 - x);
     wire  [w_y - 1:0] mirrored_y = w_y' (screen_height - 1 - y);
+
+    `endif
 
     //------------------------------------------------------------------------
 
@@ -247,8 +253,17 @@ module board_specific_top
         .abcdefgh      ( abcdefgh      ),
         .digit         ( lab_digit     ),
 
+        `ifdef MIRROR_LCD
+
         .x             ( mirrored_x    ),
         .y             ( mirrored_y    ),
+
+        `else
+
+        .x             ( x             ),
+        .y             ( y             ),
+
+        `endif
 
         .red           ( LARGE_LCD_R   ),
         .green         ( LARGE_LCD_G   ),
@@ -268,12 +283,6 @@ module board_specific_top
 
         wire [$left (abcdefgh):0] hgfedcba;
         `SWAP_BITS (hgfedcba, abcdefgh);
-
-    `endif
-
-    //------------------------------------------------------------------------
-
-    `ifdef INSTANTIATE_TM1638_BOARD_CONTROLLER_MODULE
 
         tm1638_board_controller
         # (
@@ -301,32 +310,28 @@ module board_specific_top
 
         `ifdef USE_LCD_800_480
 
-            wire lcd_module_clk;
-
             Gowin_rPLL i_Gowin_rPLL
             (
-                .clkout  ( lcd_module_clk ),  // 200    MHz
-                .clkoutd ( LARGE_LCD_CK   ),  //  33.33 MHz
-                .clkin   ( clk            )   //  27    MHz
+                .clkout  (              ),  // 200    MHz
+                .clkoutd ( LARGE_LCD_CK ),  //  33.33 MHz
+                .clkin   ( clk          )   //  27    MHz
             );
 
         `elsif USE_LCD_480_272_ML6485
 
-            wire lcd_module_clk;
-
             Gowin_rPLL i_Gowin_rPLL
             (
-                .clkout  ( lcd_module_clk ),  // 200    MHz
-                .clkoutd ( LARGE_LCD_CK   ),  //  33.33 MHz
-                .clkin   ( clk            )   //  27    MHz
+                .clkout  (              ),  // 200    MHz
+                .clkoutd ( LARGE_LCD_CK ),  //  33.33 MHz
+                .clkin   ( clk          )   //  27    MHz
             );
 
         `else  // Using 480x272
 
             Gowin_rPLL i_Gowin_rPLL
             (
-                .clkout  ( LARGE_LCD_CK   ),  //  9 MHz
-                .clkin   ( clk            )   // 27 MHz
+                .clkout  ( LARGE_LCD_CK ),  //  9 MHz
+                .clkin   ( clk          )   // 27 MHz
             );
 
         `endif
@@ -340,10 +345,6 @@ module board_specific_top
         `endif
         i_lcd
         (
-            `ifdef USE_LCD_800_480
-            .CLK       (   lcd_module_clk ),
-            `endif
-
             .PixelClk  (   LARGE_LCD_CK   ),
             .nRST      ( ~ rst            ),
 
