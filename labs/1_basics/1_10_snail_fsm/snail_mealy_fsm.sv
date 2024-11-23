@@ -11,10 +11,13 @@ module snail_mealy_fsm
     output y
 );
 
-    typedef enum bit
+    typedef enum bit[2:0]
     {
-        S0 = 1'd0,
-        S1 = 1'd1
+        S0 = 3'd0,
+        S1 = 3'd1,
+        S2 = 3'd2,
+        S3 = 3'd3,
+        S4 = 3'd4
     }
     state_e;
 
@@ -34,14 +37,23 @@ module snail_mealy_fsm
     begin
         next_state = state;
 
+        // case (state)
+        // S0: if (~ a) next_state = S1;
+        // S1: if (  a) next_state = S0;
+        // endcase
+
         case (state)
-        S0: if (~ a) next_state = S1;
-        S1: if (  a) next_state = S0;
+            S0: if ( a) next_state = S1;
+            S1: if (~a) next_state = S2;
+            S2: if ( a) next_state = S3; else next_state = S1;
+            S3: if ( a) next_state = S4; else next_state = S2;
+            S4: next_state = S0;
         endcase
+        
     end
 
     // Output logic based on current state and inputs
 
-    assign y = (a & state == S1);
+    assign y = (~a & state == S4);
 
 endmodule

@@ -169,14 +169,29 @@ module game_top
     //------------------------------------------------------------------------
 
     assign sprite_torpedo_write_x  = screen_width / 2 + random [15:10];
-    assign sprite_torpedo_write_y  = screen_height - 16;
+    // assign sprite_torpedo_write_y  = screen_height - 16;
+    assign sprite_torpedo_write_y  = screen_height - random [15:10];
 
     always_comb
     begin
+        // case (left_right_keys)
+        // 2'b00: sprite_torpedo_write_dx = 2'b00;
+        // 2'b01: sprite_torpedo_write_dx = 2'b01;
+        // 2'b10: sprite_torpedo_write_dx = 2'b11;
+        // 2'b11: sprite_torpedo_write_dx = 2'b00;
+        // endcase
+
+        // case (left_right_keys)
+        // 2'b00: sprite_torpedo_write_dy = 3'b111;
+        // 2'b01: sprite_torpedo_write_dy = 3'b110;
+        // 2'b10: sprite_torpedo_write_dy = 3'b110;
+        // 2'b11: sprite_torpedo_write_dy = 3'b110;
+        // endcase
+
         case (left_right_keys)
         2'b00: sprite_torpedo_write_dx = 2'b00;
-        2'b01: sprite_torpedo_write_dx = 2'b01;
-        2'b10: sprite_torpedo_write_dx = 2'b11;
+        2'b01: sprite_torpedo_write_dx = 2'b11;
+        2'b10: sprite_torpedo_write_dx = 2'b01;
         2'b11: sprite_torpedo_write_dx = 2'b00;
         endcase
 
