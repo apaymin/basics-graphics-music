@@ -266,7 +266,7 @@ module lab_top
     //------------------------------------------------------------------------
 
     `define SONGS_581
-    //`define SONGS_423
+    // `define SONGS_423
 
     `ifdef SONGS_581
 
