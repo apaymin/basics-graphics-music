@@ -1,5 +1,6 @@
 `include "config.svh"
 `include "lab_specific_board_config.svh"
+`include "swap_bits.svh"
 
 `ifdef FORCE_NO_INSTANTIATE_TM1638_BOARD_CONTROLLER_MODULE
     `undef INSTANTIATE_TM1638_BOARD_CONTROLLER_MODULE
@@ -9,17 +10,19 @@
    `undef INSTANTIATE_GRAPHICS_INTERFACE_MODULE
 `endif
 
+// `define MIRROR_LCD
+
 module board_specific_top
 # (
-    parameter   clk_mhz       = 27, // CLK - lab_clk lab_mhz
-                pixel_mhz     = 32, // LCD_CLK - lab_clk lab_mhz
+    parameter   clk_mhz       = 27, // CLK
+                pixel_mhz     = 33, // LCD_CLK
 
                 w_key         = 5,  // The last key is used for a reset
                 w_sw          = 5,
 
                 w_led         = 6,
 
-                w_digit       = 0,
+                w_digit       = 1,
                 w_gpio        = 32,
 
                 screen_width  = 800,
@@ -30,7 +33,9 @@ module board_specific_top
                 w_blue        = 5,
 
                 w_x = $clog2 ( screen_width  ),
-                w_y = $clog2 ( screen_height )
+                w_y = $clog2 ( screen_height ),
+
+                w_sound       = 16
 )
 (
     input                       CLK,
@@ -64,21 +69,13 @@ module board_specific_top
     output                      PA_EN,
     output                      HP_DIN,
     output                      HP_WS,
-    output                      HP_BCK,
-
-    output                      SCK,
-    output                      BCK,
-    output                      LRCK,
-    output                      DIN
-
+    output                      HP_BCK
 );
 
         Gowin_rPLL i_Gowin_rPLL
         (
-            .clkout   (                ),  //  96 MHz
-            .clkoutd  (                ),  //  48 MHz
-            .clkoutd3 ( LCD_CLK        ),  //  32 MHz
-            .clkin    ( CLK            )   //  27 MHz
+            .clkout   ( LCD_CLK ),  //  33 MHz
+            .clkin    ( CLK     )   //  27 MHz
         );
 
     //------------------------------------------------------------------------
@@ -127,7 +124,7 @@ module board_specific_top
     wire  [w_blue      - 1:0] blue;
 
     wire  [             23:0] mic;
-    wire  [             15:0] sound;
+    wire  [w_sound     - 1:0] sound;
 
     //------------------------------------------------------------------------
 
@@ -177,9 +174,12 @@ module board_specific_top
 
     //------------------------------------------------------------------------
 
-    // Mirrored LCD
-    //wire  [w_x - 1:0] mirrored_x = w_x' (screen_width  - 1 - x);
-    //wire  [w_y - 1:0] mirrored_y = w_y' (screen_height - 1 - y);
+    `ifdef MIRROR_LCD
+
+    wire  [w_x - 1:0] mirrored_x = w_x' (screen_width  - 1 - x);
+    wire  [w_y - 1:0] mirrored_y = w_y' (screen_height - 1 - y);
+
+    `endif
 
     //------------------------------------------------------------------------
 
@@ -198,7 +198,9 @@ module board_specific_top
 
         .w_red         ( w_red         ),
         .w_green       ( w_green       ),
-        .w_blue        ( w_blue        )
+        .w_blue        ( w_blue        )   //,
+
+//        .w_sound       ( w_sound       )
     )
     i_lab_top
     (
@@ -214,13 +216,17 @@ module board_specific_top
         .abcdefgh      ( abcdefgh      ),
         .digit         ( lab_digit     ),
 
-      // Normal LCD
+        `ifdef MIRROR_LCD
+
+        .x             ( mirrored_x    ),
+        .y             ( mirrored_y    ),
+
+        `else
+
         .x             ( x             ),
         .y             ( y             ),
 
-      // Mirrored LCD
-      //.x             ( mirrored_x    ),
-      //.y             ( mirrored_y    ),
+        `endif
 
         .red           ( LCD_R         ),
         .green         ( LCD_G         ),
@@ -238,36 +244,26 @@ module board_specific_top
 
     `ifdef INSTANTIATE_TM1638_BOARD_CONTROLLER_MODULE
 
-    wire [$left (abcdefgh):0] hgfedcba;
+        wire [$left (abcdefgh):0] hgfedcba;
+        `SWAP_BITS (hgfedcba, abcdefgh);
 
-    generate
-        genvar i;
-
-        for (i = 0; i < $bits (abcdefgh); i ++)
-        begin : abc
-            assign hgfedcba [i] = abcdefgh [$left (abcdefgh) - i];
-        end
-    endgenerate
-
-    //------------------------------------------------------------------------
-
-    tm1638_board_controller
-    # (
-        .clk_mhz ( lab_mhz    ),
-        .w_digit ( w_tm_digit )
-    )
-    i_tm1638
-    (
-        .clk        ( lab_clk       ),
-        .rst        ( rst           ),
-        .hgfedcba   ( hgfedcba      ),
-        .digit      ( tm_digit      ),
-        .ledr       ( tm_led        ),
-        .keys       ( tm_key        ),
-        .sio_clk    ( GPIO_0[2]     ),
-        .sio_stb    ( GPIO_0[3]     ),
-        .sio_data   ( GPIO_0[1]     )
-    );
+        tm1638_board_controller
+        # (
+            .clk_mhz    ( lab_mhz     ),
+            .w_digit    ( w_tm_digit  )
+        )
+        i_tm1638
+        (
+            .clk        ( lab_clk     ),
+            .rst        ( rst         ),
+            .hgfedcba   ( hgfedcba    ),
+            .digit      ( tm_digit    ),
+            .ledr       ( tm_led      ),
+            .keys       ( tm_key      ),
+            .sio_clk    ( GPIO_1[2]   ),
+            .sio_stb    ( GPIO_1[3]   ),
+            .sio_data   ( GPIO_1[1]   )
+        );
 
     `endif
 
@@ -277,92 +273,88 @@ module board_specific_top
 
         lcd_800_480 i_lcd
         (
-            .PixelClk  (   lab_clk        ),
-            .nRST      ( ~ rst            ),
+            .PixelClk   (   lab_clk   ),
+            .nRST       ( ~ rst       ),
 
-            .LCD_DE    (   LCD_DE         ),
-            .LCD_HSYNC (   LCD_HS         ),
-            .LCD_VSYNC (   LCD_VS         ),
+            .LCD_DE     (   LCD_DE    ),
+            .LCD_HSYNC  (   LCD_HS    ),
+            .LCD_VSYNC  (   LCD_VS    ),
 
-            .x         (   x              ),
-            .y         (   y              )
+            .x          (   x         ),
+            .y          (   y         )
         );
 
     `endif
 
-    //--------------------------------------------------------------------
+    //------------------------------------------------------------------------
 
     `ifdef INSTANTIATE_MICROPHONE_INTERFACE_MODULE
 
-    inmp441_mic_i2s_receiver
-    # (
-        .clk_mhz ( lab_mhz    )
-    )
-    i_microphone
-    (
-        .clk     ( lab_clk    ),
-        .rst     ( rst        ),
-        .lr      ( GPIO_1 [1] ),
-        .ws      ( GPIO_1 [2] ),
-        .sck     ( GPIO_1 [3] ),
-        .sd      ( GPIO_1 [0] ),
-        .value   ( mic        )
-    );
+        inmp441_mic_i2s_receiver
+        # (
+            .clk_mhz ( lab_mhz    )
+        )
+        i_microphone
+        (
+            .clk     ( lab_clk    ),
+            .rst     ( rst        ),
+            .lr      ( GPIO_0 [2] ),
+            .ws      ( GPIO_0 [3] ),
+            .sck     ( GPIO_0 [1] ),
+            .sd      ( GPIO_0 [0] ),
+            .value   ( mic        )
+        );
 
     `endif
 
-    //--------------------------------------------------------------------
+    //------------------------------------------------------------------------
 
     `ifdef INSTANTIATE_SOUND_OUTPUT_INTERFACE_MODULE
 
-    // Onboard PT8211 DAC Tang Primer 20k dock board
+        // Onboard PT8211 DAC requires LSB (Least Significant Bit Justified) data format
+        // For Tang Primer 20k Dock DAC PT8211 do not require mclk signal but 
+        // on-board amplifier LPA4809 needs enable signal PA_EN
 
-    /* About the parameter align_right. Shifting the data to the right. 
-    PT8211 DAC requires Japanese or called LSB (Least Significant Bit Justified) 
-    data format (LSB data at the end of the packet). With respect to I2C shifted 
-    to the right by 1 bit, this will be 15 bits. The width of the data bus in the 
-    driver i2s_audio_out.sv It is used to determine the distance between the first 
-    bit configured for I2S operation (shifted 1 bit to the right) and LSB data. */
+        i2s_audio_out
+        # (
+            .clk_mhz             ( lab_mhz    ),
+            .in_res              ( w_sound    ),
+            .align_right         ( 1'b1       ), // PT8211 DAC data format
+            .offset_by_one_cycle ( 1'b0       )
+        )
+        i_audio_out
+        (
+            .clk                 ( lab_clk    ),
+            .reset               ( rst        ),
+            .data_in             ( sound      ),
+            .mclk                (            ),
+            .bclk                ( HP_BCK     ),
+            .lrclk               ( HP_WS      ),
+            .sdata               ( HP_DIN     )
+        );
 
-    i2s_audio_out
-    # (
-        .clk_mhz  ( lab_mhz    ),
-        .align_right ( 1'b1    )
-    )
-    inst_audio_out
-    (
-        .clk      ( lab_clk    ),
-        .reset    ( rst        ),
-        .data_in  ( sound      ),
-        .mclk     (            ),
-        .bclk     ( HP_BCK     ),
-        .lrclk    ( HP_WS      ),
-        .sdata    ( HP_DIN     )
-    );
+        // Enable DAC
+        assign PA_EN = 1'b1;
 
-    // Enable DAC
+        // External DAC PCM5102A, Digilent Pmod AMP3, UDA1334A
 
-    // For Tang Primer 20k dock DAC do not require mclk signal
-    // but it needs enable signal PA_EN
-
-    assign PA_EN = 1'b1;
-
-    // External DAC PCM5102A, Digilent Pmod AMP3, UDA1334A
-
-    i2s_audio_out
-    # (
-        .clk_mhz  ( lab_mhz    )
-    )
-    inst_ext_audio_out
-    (
-        .clk      ( lab_clk    ),
-        .reset    ( rst        ),
-        .data_in  ( sound      ),
-        .mclk     ( SCK        ),
-        .bclk     ( BCK        ),
-        .sdata    ( DIN        ),
-        .lrclk    ( LRCK       )
-    );
+        i2s_audio_out
+        # (
+            .clk_mhz             ( lab_mhz    ),
+            .in_res              ( w_sound    ),
+            .align_right         ( 1'b0       ),
+            .offset_by_one_cycle ( 1'b1       )
+        )
+        i_ext_audio_out
+        (
+            .clk                 ( lab_clk    ),
+            .reset               ( rst        ),
+            .data_in             ( sound      ),
+            .mclk                ( GPIO_1[4]  ),
+            .bclk                ( GPIO_1[5]  ),
+            .lrclk               ( GPIO_1[7]  ),
+            .sdata               ( GPIO_1[6]  )
+        );
 
     `endif
 
